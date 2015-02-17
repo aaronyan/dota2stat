@@ -5,24 +5,36 @@ from pymongo import Connection
 pp = pprint.PrettyPrinter(indent = 2)
 pd.set_option('display.width', 1000)
 
-# API Credentials and Mongo db name and collection name
-api_key = os.environ.get('DOTA2_API_KEY')
-account_id = int(os.environ.get('DOTA2_ACCOUNT_ID'))
-db_name = 'dota2'
-collection_name = 'aaron'
+class Credentials(object):
+	def __init__ (self, api_key = None, account_id = None, \
+				  db_name = None, collection_name = None):
+		self.api_key = api_key
+		self.account_id = account_id
+		self.db_name = db_name
+		self.collection_name = collection_name
 
-def gen_match_ids():
+"""
+Setup Functions / Pull Data from API
+"""
+
+def gen_match_ids(cred):
 	# Create match_idn list of user-specific matches
+	api_key = cred.api_key
+	account_id = cred.account_id
+	db_name = cred.db_name
+	collection_name = cred.collection_name
+
 	api.set_api_key(api_key)
 	start_match_id = None
 	match_ids = []
+
 	while True:
 		match_ids_hold = []
 		matches = api.get_match_history(start_at_match_id = start_match_id,
-									account_id = account_id,
-								    skill = 3,
-								    game_mode = 2,
-								    min_players = 10)['result']
+										account_id = account_id,
+								    	skill = 3,
+								    	game_mode = 1,
+								    	min_players = 10)['result']
 
 		match_ids_hold = [i['match_id'] for i in matches['matches']]
 		if not match_ids_hold: break
@@ -31,13 +43,18 @@ def gen_match_ids():
 		match_ids += match_ids_hold
 	return match_ids
 
-def get_match_details(match_id):
+def get_match_details(cred, match_id):
 	# Retrieves match details given match_id
+	api_key = cred.api_key
+	db_name = cred.db_name
+	collection_name = cred.collection_name
 	api.set_api_key(api_key)
 	return api.get_match_details(match_id = match_id)['result']
 
-def setup(skip=None):
+def setup(cred, skip = None):
 	# MongoDB connection and Dota 2 API Key
+	db_name = cred.db_name
+	collection_name = cred.collection_name
 	if skip == True: return
 	con = Connection()
 	db = getattr(con, db_name)
@@ -45,11 +62,19 @@ def setup(skip=None):
 
 	match_ids = gen_match_ids()
 	for idx, match_id in enumerate(match_ids):
-		collection.insert(get_match_details(match_id))
+		collection.insert(get_match_details(cred, match_id))
 		print "Inserting match details %s/%s into mongoDB..." %(idx, len(match_ids))
 
-def heroes_win():
+"""
+Single Attribute Analysis - Personal
+"""
+
+def heroes_win(cred):
 	# Generate dataframe of heroes played
+	account_id = cred.account_id
+	db_name = cred.db_name
+	collection_name = cred.collection_name
+
 	con = Connection()
 	db = getattr(con, db_name)
 	matches = getattr(db, collection_name)
@@ -72,19 +97,14 @@ def heroes_win():
 	heroes_df = pd.DataFrame(games)
 	return heroes_df
 
-def create_hero_dictionary():
-	# Creates a simple dictioanry of idns and hero names
-	hero_dict = {}
-	hero_name_and_id = api.get_heroes()['result']['heroes']
-	for hero in hero_name_and_id:
-		hero_dict[hero['id']] = hero['localized_name']
-	return hero_dict
-
 def create_hero_attribute_df():
 	# Reads the tab-delimited .txt file for hero attributes
-	return pd.DataFrame.from_csv("hero-attributes.txt", sep="\t")
+	dirname = os.path.dirname(os.path.dirname(__file__))
+	path = os.path.join(dirname, 'data\hero-attributes.txt')
+	return pd.DataFrame.from_csv(path, sep="\t")
 
 def add_attributes_df(heroes, hero_attributes):
+	# Adds detailed information (hero name, win)
 	primary_attribute_detail = [hero_attributes.ix[i]['primary_attribute'] \
 								for i in heroes['hero_id']]
 	name = [hero_attributes.ix[i]['hero'] \
@@ -99,8 +119,9 @@ def add_attributes_df(heroes, hero_attributes):
 	heroes.loc[:,'win'] = win
 	return
 
-def calc_primary_attribute_stats():
-	heroes = heroes_win()
+def calc_primary_attribute_stats(cred):
+	# Summarizes attributes df
+	heroes = heroes_win(cred)
 	hero_attributes = create_hero_attribute_df()
 	add_attributes_df(heroes, hero_attributes)
 	
@@ -119,17 +140,38 @@ def calc_primary_attribute_stats():
 	return results_primary
 
 def plot_primary_attribute(results_primary):
+	# Plots the primary attribute summary dataframe
 	results_primary['win %'].plot(kind='barh')
-	# plt.subplots_adjust(bottom=0.2)
 	plt.show()
 	
+"""
+Team Attribute Analysis - Personal
+"""
 
-def main():
-	results_primary = calc_primary_attribute_stats()
-	plot_primary_attribute(results_primary)
-	print results_primary
+def hereos_composition(cred):
+	con = Connection()
+	db = getattr(con, db_name)
+	matches = getattr(db, collection_name)
 
+def calc_primary_attribute_composition(cred):
+
+	api_key = cred.api_key
+	account_id = cred.account_id
+	db_name = cred.db_name
+	collection_name = cred.collection_name
+
+	heroes = hereos_composition(cred)
 
 if __name__ == "__main__":
-	setup(skip=True)
-	main()
+	# API Credentials and Mongo db name and collection name
+	api_key = os.environ.get('DOTA2_API_KEY')
+	account_id = int(os.environ.get('DOTA2_ACCOUNT_ID'))
+	db_name = 'dota2'
+	collection_name = 'aaron'
+
+	cred = Credentials(api_key = api_key, account_id = account_id,
+					   db_name = db_name, collection_name = collection_name)
+	
+	setup(cred, skip=True)
+	results_primary = calc_primary_attribute_stats(cred)
+	print results_primary
