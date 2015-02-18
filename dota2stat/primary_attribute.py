@@ -1,4 +1,5 @@
 import os, json, pprint, pandas as pd, matplotlib.pyplot as plt, seaborn
+import numpy as np
 from dota2py import api
 from pymongo import Connection
 
@@ -149,9 +150,29 @@ Team Attribute Analysis - Personal
 """
 
 def hereos_composition(cred):
+	db_name = cred.db_name
+	collection_name = cred.collection_name
 	con = Connection()
 	db = getattr(con, db_name)
 	matches = getattr(db, collection_name)
+
+	heroes_raw = matches.find({'game_mode':1}, 
+						  {'players.hero_id',
+						   'players.player_slot',
+						   'radiant_win'})
+
+	games = []
+	match = {}
+	for game in heroes_raw:
+		match = {}
+		match['radiant_win'] = game['radiant_win']
+		for i in range(len(game['players'])):
+			addme = {}
+			addme[game['players'][i]['player_slot']] = game['players'][i]['hero_id']
+			match = dict(match.items() +  addme.items())
+		games.append(match)
+
+	return games
 
 def calc_primary_attribute_composition(cred):
 
@@ -161,6 +182,12 @@ def calc_primary_attribute_composition(cred):
 	collection_name = cred.collection_name
 
 	heroes = hereos_composition(cred)
+	
+	df = pd.DataFrame.from_dict(heroes)
+	df_attribute_cols = df.columns.values[:len(df.columns.values)-1]
+	df_attribute_cols = ['attr_'+ str(x) for x in df_attribute_cols]
+	
+	print df_attribute_cols
 
 if __name__ == "__main__":
 	# API Credentials and Mongo db name and collection name
@@ -173,5 +200,7 @@ if __name__ == "__main__":
 					   db_name = db_name, collection_name = collection_name)
 	
 	setup(cred, skip=True)
-	results_primary = calc_primary_attribute_stats(cred)
-	print results_primary
+	# results_primary = calc_primary_attribute_stats(cred)
+	# print results_primary
+
+	calc_primary_attribute_composition(cred)
