@@ -4,7 +4,8 @@ from dota2py import api
 from pymongo import Connection
 
 pp = pprint.PrettyPrinter(indent = 2)
-pd.set_option('display.width', 1000)
+pd.set_option('display.width', 2000)
+pd.set_option('display.max_columns', 30)
 
 class Credentials(object):
 	def __init__ (self, api_key = None, account_id = None, \
@@ -174,6 +175,15 @@ def hereos_composition(cred):
 
 	return games
 
+def abbreviate_attribute(att):
+	abbrev = {'Strength': 'STR',
+			  'Intelligence': 'INT',
+			  'Agility': 'AGI'}
+	return abbrev[att]
+
+def team_att_comp():
+	pass
+
 def calc_primary_attribute_composition(cred):
 
 	api_key = cred.api_key
@@ -183,11 +193,20 @@ def calc_primary_attribute_composition(cred):
 
 	heroes = hereos_composition(cred)
 	
-	df = pd.DataFrame.from_dict(heroes)
-	df_attribute_cols = df.columns.values[:len(df.columns.values)-1]
-	df_attribute_cols = ['attr_'+ str(x) for x in df_attribute_cols]
-	
-	print df_attribute_cols
+	all_players_df = pd.DataFrame.from_dict(heroes)
+	df_attribute_cols = all_players_df.columns.values[:len(all_players_df.columns.values)-1]
+	df_new_attribute_cols = ['attr_'+ str(x) for x in df_attribute_cols]
+	hero_attributes = create_hero_attribute_df()
+
+	print all_players_df
+
+	for x,x2 in zip(df_attribute_cols, df_new_attribute_cols):
+		temp_col = [abbreviate_attribute(hero_attributes.ix[i]['primary_attribute']) \
+					for i in all_players_df[x]]
+		all_players_df[x2] = temp_col
+
+	print all_players_df
+
 
 if __name__ == "__main__":
 	# API Credentials and Mongo db name and collection name
