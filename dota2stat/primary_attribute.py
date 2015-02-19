@@ -181,16 +181,35 @@ def abbreviate_attribute(att):
 			  'Agility': 'AGI'}
 	return abbrev[att]
 
-def team_att_comp():
-	pass
+def count_comp(attr_summary):
+
+	new_col = []
+	for indx,v in attr_summary.iterrows():
+		s = 0; a = 0; i = 0;
+		s = sum([1 for j in v if j == 'STR'])
+		a = sum([1 for j in v if j == 'AGI'])
+		i = sum([1 for j in v if j == 'INT'])
+
+		new_col.append([s,a,i])
+	attr_summary['composition'] = new_col
+
+	return attr_summary
+
+
+
+def team_att_comp(all_players_abbrev_df):
+	
+	radiant = all_players_abbrev_df.iloc[:,0:5]
+	dire = all_players_abbrev_df.iloc[:,5:10]
+
+	radiant = count_comp(radiant)
+	dire = count_comp(dire)
+
+	print radiant
+	print dire
+	
 
 def calc_primary_attribute_composition(cred):
-
-	api_key = cred.api_key
-	account_id = cred.account_id
-	db_name = cred.db_name
-	collection_name = cred.collection_name
-
 	heroes = hereos_composition(cred)
 	
 	all_players_df = pd.DataFrame.from_dict(heroes)
@@ -198,14 +217,17 @@ def calc_primary_attribute_composition(cred):
 	df_new_attribute_cols = ['attr_'+ str(x) for x in df_attribute_cols]
 	hero_attributes = create_hero_attribute_df()
 
-	print all_players_df
+	all_players_abbrev_df = pd.DataFrame()
+
 
 	for x,x2 in zip(df_attribute_cols, df_new_attribute_cols):
 		temp_col = [abbreviate_attribute(hero_attributes.ix[i]['primary_attribute']) \
 					for i in all_players_df[x]]
-		all_players_df[x2] = temp_col
+		all_players_abbrev_df[x2] = temp_col
 
-	print all_players_df
+	print all_players_abbrev_df
+
+	team_att_comp(all_players_abbrev_df)
 
 
 if __name__ == "__main__":
