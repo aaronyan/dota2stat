@@ -53,7 +53,7 @@ def get_match_details(cred, match_id):
 	api.set_api_key(api_key)
 	return api.get_match_details(match_id = match_id)['result']
 
-def setup(cred, skip = None):
+def personal_setup(cred, skip = None):
 	# MongoDB connection and Dota 2 API Key
 	db_name = cred.db_name
 	collection_name = cred.collection_name
@@ -156,12 +156,10 @@ def hereos_composition(cred):
 	con = Connection()
 	db = getattr(con, db_name)
 	matches = getattr(db, collection_name)
-
 	heroes_raw = matches.find({'game_mode':1}, 
 						  {'players.hero_id',
 						   'players.player_slot',
 						   'radiant_win'})
-
 	games = []
 	match = {}
 	for game in heroes_raw:
@@ -182,52 +180,54 @@ def abbreviate_attribute(att):
 	return abbrev[att]
 
 def count_comp(attr_summary):
-
 	new_col = []
 	for indx,v in attr_summary.iterrows():
 		s = 0; a = 0; i = 0;
 		s = sum([1 for j in v if j == 'STR'])
 		a = sum([1 for j in v if j == 'AGI'])
 		i = sum([1 for j in v if j == 'INT'])
-
-		new_col.append([s,a,i])
+		new_col.append(str(s)+str(a)+str(i))
 	attr_summary['composition'] = new_col
 
 	return attr_summary
 
 
-
 def team_att_comp(all_players_abbrev_df):
-	
 	radiant = all_players_abbrev_df.iloc[:,0:5]
 	dire = all_players_abbrev_df.iloc[:,5:10]
-
 	radiant = count_comp(radiant)
 	dire = count_comp(dire)
 
-	print radiant
-	print dire
+	compare_comp = radiant.loc[:,['composition']]
+	compare_comp.columns = ['radiant']
+	compare_comp['dire'] = dire['composition']
+
+	return compare_comp
 	
 
 def calc_primary_attribute_composition(cred):
 	heroes = hereos_composition(cred)
-	
 	all_players_df = pd.DataFrame.from_dict(heroes)
 	df_attribute_cols = all_players_df.columns.values[:len(all_players_df.columns.values)-1]
 	df_new_attribute_cols = ['attr_'+ str(x) for x in df_attribute_cols]
 	hero_attributes = create_hero_attribute_df()
-
 	all_players_abbrev_df = pd.DataFrame()
-
 
 	for x,x2 in zip(df_attribute_cols, df_new_attribute_cols):
 		temp_col = [abbreviate_attribute(hero_attributes.ix[i]['primary_attribute']) \
 					for i in all_players_df[x]]
 		all_players_abbrev_df[x2] = temp_col
 
-	print all_players_abbrev_df
-
-	team_att_comp(all_players_abbrev_df)
+	compare_comp = team_att_comp(all_players_abbrev_df)
+	compare_comp['radiant_win'] = all_players_df['radiant_win']
+	radiant_comp = compare_comp.loc[:,['radiant','radiant_win']]
+	radiant_comp_win = radiant_comp.groupby(['radiant'], sort=True).sum()
+	radiant_comp_total = radiant_comp.groupby(['radiant'], sort=True).count()
+	radiant_comp_win['total'] = radiant_comp_total
+	percent_win = [x/y for x,y in zip(radiant_comp_win['radiant_win'],radiant_comp_win['total'])]
+	radiant_comp_win['percent'] = percent_win
+	print radiant_comp_win
+	# print compare_comp
 
 
 if __name__ == "__main__":
@@ -240,8 +240,9 @@ if __name__ == "__main__":
 	cred = Credentials(api_key = api_key, account_id = account_id,
 					   db_name = db_name, collection_name = collection_name)
 	
-	setup(cred, skip=True)
+	personal_setup(cred, skip=True)
 	# results_primary = calc_primary_attribute_stats(cred)
 	# print results_primary
-
 	calc_primary_attribute_composition(cred)
+
+	
