@@ -1,5 +1,5 @@
 import os, json, pprint, pandas as pd, matplotlib.pyplot as plt, seaborn
-import numpy as np
+import numpy as np, time
 from dota2py import api
 from pymongo import Connection
 
@@ -9,14 +9,16 @@ pd.set_option('display.max_columns', 30)
 
 class Credentials(object):
 	def __init__ (self, api_key = None, account_id = None, \
-				  db_name = None, collection_name = None):
+				  db_name = None, collection_name = None, \
+				  start_match_id = None):
 		self.api_key = api_key
 		self.account_id = account_id
 		self.db_name = db_name
 		self.collection_name = collection_name
+		self.start_match_id = start_match_id
 
 """
-Setup Functions / Pull Data from API
+Setup Functions / Pull Data from API - Personal
 """
 
 def gen_match_ids(cred):
@@ -25,9 +27,9 @@ def gen_match_ids(cred):
 	account_id = cred.account_id
 	db_name = cred.db_name
 	collection_name = cred.collection_name
+	start_match_id = cred.start_match_id
 
 	api.set_api_key(api_key)
-	start_match_id = None
 	match_ids = []
 
 	while True:
@@ -53,7 +55,7 @@ def get_match_details(cred, match_id):
 	api.set_api_key(api_key)
 	return api.get_match_details(match_id = match_id)['result']
 
-def personal_setup(cred, skip = None):
+def setup(cred, skip = None):
 	# MongoDB connection and Dota 2 API Key
 	db_name = cred.db_name
 	collection_name = cred.collection_name
@@ -61,11 +63,14 @@ def personal_setup(cred, skip = None):
 	con = Connection()
 	db = getattr(con, db_name)
 	collection = getattr(db, collection_name)
+	collection.create_index('match_id',unique=True,background=True, drop_dups=True)
 
-	match_ids = gen_match_ids()
+	match_ids = gen_match_ids(cred)
 	for idx, match_id in enumerate(match_ids):
-		collection.insert(get_match_details(cred, match_id))
-		print "Inserting match details %s/%s into mongoDB..." %(idx, len(match_ids))
+		if collection.find({'match_id':match_id}).count() == 0:
+			collection.insert(get_match_details(cred, match_id))
+			print "Inserting match details %s/%s into mongoDB..." %(idx+1, len(match_ids))
+			time.sleep(.6)
 
 """
 Single Attribute Analysis - Personal
@@ -233,16 +238,39 @@ def calc_primary_attribute_composition(cred):
 if __name__ == "__main__":
 	# API Credentials and Mongo db name and collection name
 	api_key = os.environ.get('DOTA2_API_KEY')
-	account_id = int(os.environ.get('DOTA2_ACCOUNT_ID'))
+	account_id = None # account_id = int(os.environ.get('DOTA2_ACCOUNT_ID'))
 	db_name = 'dota2'
-	collection_name = 'aaron'
+	collection_name = 'public'
+	start_match_id = None
 
 	cred = Credentials(api_key = api_key, account_id = account_id,
-					   db_name = db_name, collection_name = collection_name)
+					   db_name = db_name, collection_name = collection_name,
+					   start_match_id = start_match_id)
 	
-	personal_setup(cred, skip=True)
+	"""
+	Personal Games - Analysis
+	"""
+	# setup(cred, skip=True)
 	# results_primary = calc_primary_attribute_stats(cred)
 	# print results_primary
-	calc_primary_attribute_composition(cred)
 
-	
+	"""
+	Public Games - Analysis
+	"""
+	setup(cred)
+	# con = Connection()
+	# db = getattr(con, db_name)
+	# collection = getattr(db, collection_name)
+
+	# all_match_ids = list(collection.find({},{'match_id'}))
+	# # print all_match_ids
+
+	# only_ids = [i['match_id'] for i in all_match_ids ]
+
+	# seen = set()
+	# uniq = [x for x in only_ids if x not in seen and not seen.add(x)]
+
+	# print len(only_ids)
+	# print len(uniq)
+
+
