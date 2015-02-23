@@ -161,10 +161,11 @@ def hereos_composition(cred):
 	con = Connection()
 	db = getattr(con, db_name)
 	matches = getattr(db, collection_name)
-	heroes_raw = matches.find({'game_mode':1}, 
-						  {'players.hero_id',
-						   'players.player_slot',
-						   'radiant_win'})
+	heroes_raw = matches.find({"$and":[{'game_mode':1},
+									   {'players.hero_id':{"$ne":0}}]}, 
+							  {'players.hero_id',
+							   'players.player_slot',
+							   'radiant_win'})
 	games = []
 	match = {}
 	for game in heroes_raw:
@@ -219,8 +220,11 @@ def calc_primary_attribute_composition(cred):
 	all_players_abbrev_df = pd.DataFrame()
 
 	for x,x2 in zip(df_attribute_cols, df_new_attribute_cols):
-		temp_col = [abbreviate_attribute(hero_attributes.ix[i]['primary_attribute']) \
-					for i in all_players_df[x]]
+		temp_col = []
+		for i in all_players_df[x]:
+			abbrev_me = hero_attributes.loc[i,'primary_attribute']
+			add_me = abbreviate_attribute(abbrev_me)
+			temp_col.append(add_me)
 		all_players_abbrev_df[x2] = temp_col
 
 	compare_comp = team_att_comp(all_players_abbrev_df)
@@ -231,7 +235,8 @@ def calc_primary_attribute_composition(cred):
 	radiant_comp_win['total'] = radiant_comp_total
 	percent_win = [x/y for x,y in zip(radiant_comp_win['radiant_win'],radiant_comp_win['total'])]
 	radiant_comp_win['percent'] = percent_win
-	print radiant_comp_win
+
+	return radiant_comp_win
 	# print compare_comp
 
 
@@ -240,7 +245,7 @@ if __name__ == "__main__":
 	api_key = os.environ.get('DOTA2_API_KEY')
 	account_id = None # account_id = int(os.environ.get('DOTA2_ACCOUNT_ID'))
 	db_name = 'dota2'
-	collection_name = 'public'
+	collection_name = 'aaron'
 	start_match_id = None
 
 	cred = Credentials(api_key = api_key, account_id = account_id,
@@ -257,13 +262,18 @@ if __name__ == "__main__":
 	"""
 	Public Games - Analysis
 	"""
-	setup(cred)
+	# setup(cred)
+	results = calc_primary_attribute_composition(cred)
+	print results.sort(['radiant_win'],ascending=[0])
+
+
+
 	# con = Connection()
 	# db = getattr(con, db_name)
 	# collection = getattr(db, collection_name)
 
-	# all_match_ids = list(collection.find({},{'match_id'}))
-	# # print all_match_ids
+	# all_match_ids = list(collection.find({'players.hero_id':0},{'match_id'}))
+	# print all_match_ids
 
 	# only_ids = [i['match_id'] for i in all_match_ids ]
 
