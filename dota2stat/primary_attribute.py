@@ -228,16 +228,32 @@ def calc_primary_attribute_composition(cred):
 		all_players_abbrev_df[x2] = temp_col
 
 	compare_comp = team_att_comp(all_players_abbrev_df)
-	compare_comp['radiant_win'] = all_players_df['radiant_win']
-	radiant_comp = compare_comp.loc[:,['radiant','radiant_win']]
+	compare_comp['win'] = all_players_df['radiant_win']
+
+	# Sum and Count Radiant Win
+	radiant_comp = compare_comp.loc[:,['radiant','win']]
 	radiant_comp_win = radiant_comp.groupby(['radiant'], sort=True).sum()
 	radiant_comp_total = radiant_comp.groupby(['radiant'], sort=True).count()
 	radiant_comp_win['total'] = radiant_comp_total
-	percent_win = [x/y for x,y in zip(radiant_comp_win['radiant_win'],radiant_comp_win['total'])]
-	radiant_comp_win['percent'] = percent_win
+	radiant_percent_win = [x/y for x,y in zip(radiant_comp_win['win'],radiant_comp_win['total'])]
+	radiant_comp_win['percent'] = radiant_percent_win
 
-	return radiant_comp_win
-	# print compare_comp
+	# Sum and Count Dire Win
+	dire_comp = compare_comp.loc[:,['dire','win']]
+	dire_comp_total = dire_comp.groupby(['dire'], sort=True).count()
+	dire_comp_win = dire_comp.groupby(['dire'], sort=True).sum()
+	dire_comp_win = dire_comp_total - dire_comp_win
+	dire_comp_win['total'] = dire_comp_total
+	dire_percent_win = [x/y for x,y in zip(dire_comp_win['win'],dire_comp_win['total'])]
+	dire_comp_win['percent'] = dire_percent_win
+
+	# Combined results
+	total_result = radiant_comp_win + dire_comp_win
+	total_result_percent = [x/y for x,y in zip(total_result['win'],total_result['total'])]
+	total_result['percent'] = dire_percent_win
+
+	# return radiant_comp_win
+	return [total_result, radiant_comp_win, dire_comp_win]
 
 
 if __name__ == "__main__":
@@ -245,7 +261,7 @@ if __name__ == "__main__":
 	api_key = os.environ.get('DOTA2_API_KEY')
 	account_id = None # account_id = int(os.environ.get('DOTA2_ACCOUNT_ID'))
 	db_name = 'dota2'
-	collection_name = 'aaron'
+	collection_name = 'public'
 	start_match_id = None
 
 	cred = Credentials(api_key = api_key, account_id = account_id,
@@ -262,11 +278,9 @@ if __name__ == "__main__":
 	"""
 	Public Games - Analysis
 	"""
-	# setup(cred)
-	results = calc_primary_attribute_composition(cred)
-	print results.sort(['radiant_win'],ascending=[0])
-
-
+	setup(cred)
+	# results = calc_primary_attribute_composition(cred)
+	# print results[0].sort(['total'],ascending=[0])
 
 	# con = Connection()
 	# db = getattr(con, db_name)
