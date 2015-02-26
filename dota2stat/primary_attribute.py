@@ -68,9 +68,11 @@ def setup(cred, skip = None):
 	match_ids = gen_match_ids(cred)
 	for idx, match_id in enumerate(match_ids):
 		if collection.find({'match_id':match_id}).count() == 0:
-			collection.insert(get_match_details(cred, match_id))
-			print "Inserting match details %s/%s into mongoDB..." %(idx+1, len(match_ids))
-			time.sleep(.6)
+			match_details = get_match_details(cred, match_id)
+			if match_details['game_mode'] == 1:
+				collection.insert(match_details)
+				print "Inserting match details %s/%s into mongoDB..." %(idx+1, len(match_ids))
+				time.sleep(.6)
 
 """
 Single Attribute Analysis - Personal
@@ -250,18 +252,20 @@ def calc_primary_attribute_composition(cred):
 	# Combined results
 	total_result = radiant_comp_win + dire_comp_win
 	total_result_percent = [x/y for x,y in zip(total_result['win'],total_result['total'])]
-	total_result['percent'] = dire_percent_win
+	total_result['percent'] = total_result_percent
 
 	# return radiant_comp_win
 	return [total_result, radiant_comp_win, dire_comp_win]
 
+def transfer_records(cred):
+	pass
 
 if __name__ == "__main__":
 	# API Credentials and Mongo db name and collection name
 	api_key = os.environ.get('DOTA2_API_KEY')
 	account_id = None # account_id = int(os.environ.get('DOTA2_ACCOUNT_ID'))
 	db_name = 'dota2'
-	collection_name = 'public'
+	collection_name = 'public2'
 	start_match_id = None
 
 	cred = Credentials(api_key = api_key, account_id = account_id,
@@ -278,9 +282,13 @@ if __name__ == "__main__":
 	"""
 	Public Games - Analysis
 	"""
-	setup(cred)
+	for i in range(1):
+		setup(cred)
+	# 	time.sleep(60*15)
+
 	# results = calc_primary_attribute_composition(cred)
 	# print results[0].sort(['total'],ascending=[0])
+	# print results[0].sort(['total'],ascending=[0]).sum()
 
 	# con = Connection()
 	# db = getattr(con, db_name)
