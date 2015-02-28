@@ -254,10 +254,22 @@ def calc_primary_attribute_composition(cred):
 	total_result_percent = [x/y for x,y in zip(total_result['win'],total_result['total'])]
 	total_result['percent'] = total_result_percent
 
-	# return radiant_comp_win
+	# Standard devition
+	sd = lambda n,p: (p*float(n)*(1-p))**(0.5)
+	radiant_sd = [sd(n,p) for p,n in zip(radiant_comp_win['percent'], radiant_comp_win['total'])]
+	dire_sd = [sd(n,p) for p,n in zip(dire_comp_win['percent'], dire_comp_win['total'])]
+	total_sd = [sd(n,p) for p,n in zip(total_result['percent'], total_result['total'])]
+
+	radiant_comp_win['sd'] = radiant_sd
+	dire_comp_win['sd'] = dire_sd
+	total_result['sd'] = total_sd
+
+	# Need to make sure to iterate over the indices
+
+	# Return radiant_comp_win
 	return [total_result, radiant_comp_win, dire_comp_win]
 
-def transfer_records(cred):
+def unpaired_t_test():
 	pass
 
 if __name__ == "__main__":
@@ -265,7 +277,7 @@ if __name__ == "__main__":
 	api_key = os.environ.get('DOTA2_API_KEY')
 	account_id = None # account_id = int(os.environ.get('DOTA2_ACCOUNT_ID'))
 	db_name = 'dota2'
-	collection_name = 'public2'
+	collection_name = 'public'
 	start_match_id = None
 
 	cred = Credentials(api_key = api_key, account_id = account_id,
@@ -273,36 +285,27 @@ if __name__ == "__main__":
 					   start_match_id = start_match_id)
 	
 	"""
-	Personal Games - Analysis
+	Personal Games - Data
 	"""
 	# setup(cred, skip=True)
 	# results_primary = calc_primary_attribute_stats(cred)
 	# print results_primary
 
 	"""
-	Public Games - Analysis
+	Public Games - Data
 	"""
-	for i in range(1):
-		setup(cred)
-	# 	time.sleep(60*15)
+	# for i in range(3):
+	# 	setup(cred)
+	# 	time.sleep(60*2)
 
-	# results = calc_primary_attribute_composition(cred)
-	# print results[0].sort(['total'],ascending=[0])
-	# print results[0].sort(['total'],ascending=[0]).sum()
+	results = calc_primary_attribute_composition(cred)
+	print results[1].sort(['total'],ascending=[0])
+	print results[1].sort(['total'],ascending=[0]).sum()
 
-	# con = Connection()
-	# db = getattr(con, db_name)
-	# collection = getattr(db, collection_name)
+	"""
+	Public Games - Statistics
+	""" 
 
-	# all_match_ids = list(collection.find({'players.hero_id':0},{'match_id'}))
-	# print all_match_ids
 
-	# only_ids = [i['match_id'] for i in all_match_ids ]
-
-	# seen = set()
-	# uniq = [x for x in only_ids if x not in seen and not seen.add(x)]
-
-	# print len(only_ids)
-	# print len(uniq)
 
 
