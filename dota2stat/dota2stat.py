@@ -25,5 +25,4 @@ if __name__ == "__main__":
 					   db_name = db_name, collection_name = collection_name)
 
 	results_primary = pa.calc_primary_attribute_stats(cred)
-	print results_primary
 

@@ -287,25 +287,20 @@ if __name__ == "__main__":
 	"""
 	Personal Games - Data
 	"""
-	# setup(cred, skip=True)
-	# results_primary = calc_primary_attribute_stats(cred)
-	# print results_primary
+	setup(cred, skip=True)
+	results_primary = calc_primary_attribute_stats(cred)
+	print results_primary
 
 	"""
 	Public Games - Data
 	"""
-	# for i in range(3):
-	# 	setup(cred)
-	# 	time.sleep(60*2)
+	for i in range(3):
+		setup(cred)
+		time.sleep(60*3)
 
 	results = calc_primary_attribute_composition(cred)
 	print results[1].sort(['total'],ascending=[0])
 	print results[1].sort(['total'],ascending=[0]).sum()
-
-	"""
-	Public Games - Statistics
-	""" 
-
 
 
 
